@@ -19,10 +19,10 @@ What makes it unique:
 
 # Stack
 
-**Backend:** Rust + Axum
-**Frontend:** Svelte + TypeScript
-**AI:** Claude
-**Data:** Alpha Vantage
+* **Backend:** Rust + Axum
+* **Frontend:** Svelte + TypeScript
+* **LLM:** Claude
+* **Data:** Alpha Vantage
 
 # How to run
 
