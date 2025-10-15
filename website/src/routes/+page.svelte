@@ -1,25 +1,26 @@
 <script lang="ts">
-    interface PerformanceAnalysis {
-        recent_performance: string;
-        key_drivers: string[];
-        recent_pullback_reasons: string | null;
-    }
+    import {PUBLIC_REST_ADDR} from '$env/static/public';
 
     interface StockAnalysis {
         executive_summary: string;
-        performance_analysis: PerformanceAnalysis;
+        performance_analysis: {
+            recent_performance: string;
+            key_drivers: string[];
+            recent_pullback_reasons: string | null;
+        };
         comparative_analysis: string;
         risk_factors: string[];
         opportunities: string[];
         key_takeaway: string;
     }
 
-    let ticker = '';
-    let loading = false;
-    let analysis: StockAnalysis | null = null;
-    let error = '';
+    let ticker = $state('');
+    let analysis = $state<StockAnalysis | null>(null);
+    let loading = $state(false);
+    let error = $state('');
 
-    async function analyzeStock() {
+    async function handleSubmit(e: Event) {
+        e.preventDefault();
         if (!ticker.trim()) return;
 
         loading = true;
@@ -27,221 +28,259 @@
         analysis = null;
 
         try {
-            const response = await fetch('http://localhost:3000/api/analysis/stock', {
+            const response = await fetch(`http://${PUBLIC_REST_ADDR}/api/analysis/stock`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker: ticker.toUpperCase() })
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ticker: ticker.toUpperCase() }),
             });
 
-            if (!response.ok) throw new Error('Failed to fetch analysis');
+            if (!response.ok) {
+                throw new Error('Failed to fetch analysis');
+            }
 
             analysis = await response.json();
-        } catch (e) {
-            error = e instanceof Error ? e.message : 'An error occurred';
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'An error occurred';
         } finally {
             loading = false;
         }
     }
 
-    function handleKeyPress(e: KeyboardEvent) {
-        if (e.key === 'Enter') analyzeStock();
+    function reset() {
+        ticker = '';
+        analysis = null;
+        error = '';
     }
 </script>
 
-<main>
-    <div class="container">
+<div class="container">
+    {#if !analysis}
         <div class="input-section">
-            <div class="input-wrapper">
-                <input
-                        type="text"
-                        bind:value={ticker}
-                        on:keypress={handleKeyPress}
-                        placeholder="Enter ticker symbol"
-                        class="ticker-input"
-                        disabled={loading}
-                />
-                <button
-                        on:click={analyzeStock}
-                        class="analyze-btn"
-                        disabled={loading || !ticker.trim()}
-                >
-                    {loading ? 'Analyzing...' : 'Analyze'}
-                </button>
-            </div>
+            <h1 class="title">Stock Analysis</h1>
+            <p class="subtitle">Enter a ticker symbol to get comprehensive analysis</p>
+
+            <form onsubmit={handleSubmit}>
+                <div class="input-wrapper">
+                    <input
+                            type="text"
+                            bind:value={ticker}
+                            placeholder="AAPL"
+                            class="ticker-input"
+                            disabled={loading}
+                    />
+                    <button type="submit" class="submit-button" disabled={loading || !ticker.trim()}>
+                        {loading ? 'Analyzing...' : 'Analyze'}
+                    </button>
+                </div>
+            </form>
+
             {#if error}
                 <div class="error">{error}</div>
             {/if}
         </div>
+    {:else}
+        <div class="results">
+            <div class="results-header">
+                <div>
+                    <div class="ticker-badge">{ticker.toUpperCase()}</div>
+                    <h2 class="results-title">Stock Analysis Report</h2>
+                </div>
+                <button onclick={reset} class="reset-button">New Analysis</button>
+            </div>
 
-        {#if analysis}
-            <div class="results">
-                <div class="summary-card glow">
-                    <div class="card-label">Executive Summary</div>
-                    <p class="summary-text">{analysis.executive_summary}</p>
+            <div class="card executive-card">
+                <div class="card-header">
+                    <div class="accent-bar executive"></div>
+                    <h3>Executive Summary</h3>
+                </div>
+                <p class="card-content">{analysis.executive_summary}</p>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="accent-bar performance"></div>
+                        <h3>Performance Analysis</h3>
+                    </div>
+                    {#if analysis.performance_analysis}
+                        <div class="card-content">
+                            <p class="performance-text">{analysis.performance_analysis.recent_performance}</p>
+
+                            {#if analysis.performance_analysis.key_drivers && analysis.performance_analysis.key_drivers.length > 0}
+                                <h4 class="subsection-title">Key Drivers</h4>
+                                <ul class="list">
+                                    {#each analysis.performance_analysis.key_drivers as driver ("driver-" + driver)}
+                                        <li>{driver}</li>
+                                    {/each}
+                                </ul>
+                            {/if}
+
+                            {#if analysis.performance_analysis.recent_pullback_reasons}
+                                <h4 class="subsection-title">Recent Pullback Reasons</h4>
+                                <p class="performance-text">{analysis.performance_analysis.recent_pullback_reasons}</p>
+                            {/if}
+                        </div>
+                    {/if}
                 </div>
 
-                <div class="grid">
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="icon">📊</span>
-                            <h3>Recent Performance</h3>
-                        </div>
-                        <p class="card-content">{analysis.performance_analysis.recent_performance}</p>
-
-                        <div class="subsection">
-                            <div class="subsection-title">Key Drivers</div>
-                            <ul class="bullet-list">
-                                {#each analysis.performance_analysis.key_drivers as driver}
-                                    <li>{driver}</li>
-                                {/each}
-                            </ul>
-                        </div>
-
-                        {#if analysis.performance_analysis.recent_pullback_reasons}
-                            <div class="subsection">
-                                <div class="subsection-title">Pullback Reasons</div>
-                                <p class="card-content">{analysis.performance_analysis.recent_pullback_reasons}</p>
-                            </div>
-                        {/if}
+                <div class="card">
+                    <div class="card-header">
+                        <div class="accent-bar comparative"></div>
+                        <h3>Comparative Analysis</h3>
                     </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="icon">🔍</span>
-                            <h3>Comparative Analysis</h3>
-                        </div>
-                        <p class="card-content">{analysis.comparative_analysis}</p>
-                    </div>
-
-                    <div class="card risk">
-                        <div class="card-header">
-                            <span class="icon">⚠️</span>
-                            <h3>Risk Factors</h3>
-                        </div>
-                        <ul class="bullet-list">
-                            {#each analysis.risk_factors as risk}
-                                <li>{risk}</li>
-                            {/each}
-                        </ul>
-                    </div>
-
-                    <div class="card opportunity">
-                        <div class="card-header">
-                            <span class="icon">✨</span>
-                            <h3>Opportunities</h3>
-                        </div>
-                        <ul class="bullet-list">
-                            {#each analysis.opportunities as opportunity}
-                                <li>{opportunity}</li>
-                            {/each}
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="takeaway-card">
-                    <div class="takeaway-icon">💡</div>
-                    <div>
-                        <div class="takeaway-label">Key Takeaway</div>
-                        <p class="takeaway-text">{analysis.key_takeaway}</p>
-                    </div>
+                    <p class="card-content">{analysis.comparative_analysis}</p>
                 </div>
             </div>
-        {/if}
-    </div>
-</main>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="accent-bar risk"></div>
+                        <h3>Risk Factors</h3>
+                    </div>
+                    <ul class="list">
+                        {#each analysis.risk_factors as risk ("risk-" + risk)}
+                            <li>{risk}</li>
+                        {/each}
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="accent-bar opportunity"></div>
+                        <h3>Opportunities</h3>
+                    </div>
+                    <ul class="list">
+                        {#each analysis.opportunities as opportunity ("opportunity-" + opportunity)}
+                            <li>{opportunity}</li>
+                        {/each}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card takeaway-card">
+                <div class="card-header">
+                    <div class="accent-bar takeaway"></div>
+                    <h3>Key Takeaway</h3>
+                </div>
+                <p class="card-content takeaway-text">{analysis.key_takeaway}</p>
+            </div>
+        </div>
+    {/if}
+</div>
 
 <style>
     :global(body) {
         margin: 0;
         padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #faf8f5 0%, #f5f1ea 100%);
         min-height: 100vh;
-    }
-
-    main {
-        min-height: 100vh;
-        padding: 3rem 1.5rem;
     }
 
     .container {
         max-width: 1200px;
         margin: 0 auto;
+        padding: 60px 24px;
+        min-height: 100vh;
     }
 
     .input-section {
-        margin-bottom: 3rem;
+        max-width: 600px;
+        margin: 0 auto;
+        text-align: center;
+        padding-top: 120px;
+    }
+
+    .title {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 56px;
+        font-weight: 400;
+        color: #1a1a1a;
+        margin: 0 0 16px 0;
+        letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+        font-size: 18px;
+        color: #666;
+        margin: 0 0 48px 0;
+        line-height: 1.6;
     }
 
     .input-wrapper {
         display: flex;
-        gap: 1rem;
-        max-width: 600px;
-        margin: 0 auto;
+        gap: 12px;
+        margin-bottom: 24px;
     }
 
     .ticker-input {
         flex: 1;
-        padding: 1.25rem 1.75rem;
-        font-size: 1.125rem;
-        border: none;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        padding: 20px 24px;
+        font-size: 24px;
         font-weight: 600;
+        text-transform: uppercase;
+        border: 2px solid #e5e1d8;
+        border-radius: 12px;
+        background: white;
+        color: #1a1a1a;
+        transition: all 0.2s;
+        letter-spacing: 0.05em;
     }
 
     .ticker-input:focus {
         outline: none;
-        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
-        transform: translateY(-2px);
-        background: rgba(255, 255, 255, 1);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
     .ticker-input::placeholder {
-        color: #a0aec0;
-        font-weight: 500;
+        color: #ccc;
+        font-weight: 400;
     }
 
-    .analyze-btn {
-        padding: 1.25rem 2.5rem;
-        font-size: 1.125rem;
-        font-weight: 600;
-        border: none;
-        border-radius: 16px;
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 8px 32px rgba(245, 87, 108, 0.3);
-    }
-
-    .analyze-btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 48px rgba(245, 87, 108, 0.4);
-    }
-
-    .analyze-btn:disabled {
+    .ticker-input:disabled {
         opacity: 0.6;
         cursor: not-allowed;
     }
 
-    .error {
-        text-align: center;
-        color: #fff;
-        margin-top: 1rem;
-        padding: 1rem;
-        background: rgba(239, 68, 68, 0.2);
+    .submit-button {
+        padding: 20px 40px;
+        font-size: 16px;
+        font-weight: 600;
+        color: white;
+        background: #3b82f6;
+        border: none;
         border-radius: 12px;
-        backdrop-filter: blur(10px);
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .submit-button:hover:not(:disabled) {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .submit-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .error {
+        color: #dc2626;
+        padding: 16px;
+        background: #fee;
+        border-radius: 8px;
+        margin-top: 16px;
     }
 
     .results {
-        animation: fadeIn 0.6s ease;
+        animation: fadeIn 0.5s ease-in;
     }
 
     @keyframes fadeIn {
@@ -255,184 +294,194 @@
         }
     }
 
-    .summary-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 24px;
-        padding: 2.5rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+        gap: 16px;
     }
 
-    .glow {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .glow::before {
-        content: '';
-        position: absolute;
-        top: -2px;
-        left: -2px;
-        right: -2px;
-        bottom: -2px;
-        background: linear-gradient(45deg, #f093fb, #f5576c, #4facfe, #00f2fe);
-        border-radius: 24px;
-        z-index: -1;
-        opacity: 0.6;
-        filter: blur(20px);
-    }
-
-    .card-label {
-        font-size: 0.875rem;
+    .ticker-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        background: #3b82f6;
+        color: white;
+        border-radius: 8px;
         font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #667eea;
-        margin-bottom: 1rem;
+        font-size: 14px;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
     }
 
-    .summary-text {
-        font-size: 1.25rem;
-        line-height: 1.8;
-        color: #2d3748;
+    .results-title {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 36px;
+        font-weight: 400;
+        color: #1a1a1a;
         margin: 0;
+        letter-spacing: -0.02em;
     }
 
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+    .reset-button {
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        background: white;
+        border: 2px solid #e5e1d8;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .reset-button:hover {
+        border-color: #3b82f6;
+        color: #3b82f6;
     }
 
     .card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        transition: all 0.3s;
     }
 
     .card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 16px 56px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .executive-card {
+        border-left: 4px solid #3b82f6;
+    }
+
+    .takeaway-card {
+        border-left: 4px solid #8b5cf6;
+        background: linear-gradient(135deg, #faf8ff 0%, #f5f3ff 100%);
     }
 
     .card-header {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
+        gap: 12px;
+        margin-bottom: 16px;
     }
 
-    .icon {
-        font-size: 1.75rem;
+    .accent-bar {
+        width: 4px;
+        height: 24px;
+        border-radius: 2px;
+    }
+
+    .accent-bar.executive {
+        background: #3b82f6;
+    }
+
+    .accent-bar.performance {
+        background: #10b981;
+    }
+
+    .accent-bar.comparative {
+        background: #f59e0b;
+    }
+
+    .accent-bar.risk {
+        background: #ef4444;
+    }
+
+    .accent-bar.opportunity {
+        background: #06b6d4;
+    }
+
+    .accent-bar.takeaway {
+        background: #8b5cf6;
     }
 
     .card-header h3 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a1a1a;
         margin: 0;
-        font-size: 1.25rem;
-        color: #2d3748;
-        font-weight: 700;
     }
 
     .card-content {
-        color: #4a5568;
+        font-size: 15px;
         line-height: 1.7;
+        color: #4a4a4a;
         margin: 0;
-        font-size: 1rem;
-    }
-
-    .subsection {
-        margin-top: 1.5rem;
-    }
-
-    .subsection-title {
-        font-weight: 700;
-        color: #4a5568;
-        margin-bottom: 0.75rem;
-        font-size: 0.95rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .bullet-list {
-        margin: 0;
-        padding-left: 1.25rem;
-        color: #4a5568;
-        line-height: 1.8;
-    }
-
-    .bullet-list li {
-        margin-bottom: 0.75rem;
-    }
-
-    .bullet-list li:last-child {
-        margin-bottom: 0;
-    }
-
-    .risk {
-        border-left: 4px solid #f56565;
-    }
-
-    .opportunity {
-        border-left: 4px solid #48bb78;
-    }
-
-    .takeaway-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 24px;
-        padding: 2.5rem;
-        display: flex;
-        gap: 1.5rem;
-        align-items: flex-start;
-        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
-    }
-
-    .takeaway-icon {
-        font-size: 3rem;
-        flex-shrink: 0;
-    }
-
-    .takeaway-label {
-        font-size: 0.875rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: rgba(255, 255, 255, 0.9);
-        margin-bottom: 0.75rem;
     }
 
     .takeaway-text {
-        font-size: 1.125rem;
-        line-height: 1.8;
-        color: white;
+        font-size: 17px;
+        font-weight: 500;
+        color: #1a1a1a;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .list {
         margin: 0;
+        padding-left: 20px;
+        list-style: none;
+    }
+
+    .list li {
+        font-size: 15px;
+        line-height: 1.7;
+        color: #4a4a4a;
+        margin-bottom: 12px;
+        padding-left: 12px;
+        position: relative;
+    }
+
+    .list li::before {
+        content: '•';
+        position: absolute;
+        left: 0;
+        color: #3b82f6;
+        font-weight: bold;
     }
 
     @media (max-width: 768px) {
-        main {
-            padding: 2rem 1rem;
+        .container {
+            padding: 40px 16px;
+        }
+
+        .input-section {
+            padding-top: 60px;
+        }
+
+        .title {
+            font-size: 40px;
         }
 
         .input-wrapper {
             flex-direction: column;
         }
 
+        .ticker-input {
+            font-size: 20px;
+        }
+
+        .results-title {
+            font-size: 28px;
+        }
+
+        .card {
+            padding: 24px;
+        }
+
         .grid {
             grid-template-columns: 1fr;
-        }
-
-        .summary-card,
-        .card,
-        .takeaway-card {
-            padding: 1.5rem;
-        }
-
-        .summary-text {
-            font-size: 1.125rem;
         }
     }
 </style>

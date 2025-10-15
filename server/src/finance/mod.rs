@@ -31,6 +31,7 @@ struct GlobalQuote {
     #[serde(rename = "05. price")]
     price: String,
     #[serde(rename = "10. change percent")]
+    #[allow(dead_code)] // todo: use this later maybe?
     change_percent: String,
 }
 

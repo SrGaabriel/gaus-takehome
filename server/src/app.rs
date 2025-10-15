@@ -33,7 +33,7 @@ pub struct AppConfig {
 impl AppConfig {
     pub fn from_env() -> Self {
         Self {
-            rest_addr: get_required_env("REST_ADDR"),
+            rest_addr: get_required_env("PUBLIC_REST_ADDR"),
             alpha_vantage_api_key: get_required_env("ALPHA_VANTAGE_API_KEY"),
             claude_model: get_required_env("ANTHROPIC_MODEL"),
         }

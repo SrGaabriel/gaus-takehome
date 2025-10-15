@@ -36,9 +36,8 @@ pub async fn stock_analysis_handler(
                 .expect("Failed to analyze stock");
             ok(stock_analysis)
         }
-        Err(err) => {
-            // todo: remove the err from the string since it's just for debugging purposes
-            api_error(StatusCode::NOT_FOUND, &format!("Failed to fetch market data: {}", err))
+        Err(_err) => {
+            api_error(StatusCode::NOT_FOUND, "Failed to fetch market data, probably rate-limited :(")
         }
     }
 }

@@ -17,10 +17,6 @@ pub fn ok<T: Serialize>(data: T) -> ApiResponse<T> {
     (StatusCode::OK, Either::E1(Json(data)))
 }
 
-pub fn no_content() -> ApiResponse<()> {
-    (StatusCode::NO_CONTENT, Either::E1(Json(())))
-}
-
 pub fn api_error<T: Serialize>(status: StatusCode, message: &str) -> ApiResponse<T> {
     (status, Either::E2(Json(ApiError {
         status: status.as_u16(),
