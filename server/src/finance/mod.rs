@@ -1,5 +1,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::sync::Arc;
+use reqwest_middleware::ClientWithMiddleware;
 
 const ALPHA_VANTAGE_BASE: &str = "https://www.alphavantage.co/query";
 const SP500_TICKER: &str = "SPY";
@@ -63,17 +65,16 @@ struct NewsItem {
 }
 
 pub async fn fetch_market_data(
+    client: Arc<ClientWithMiddleware>,
     ticker: &str,
     api_key: &str,
 ) -> Result<MarketData, Box<dyn std::error::Error + Send + Sync>> {
-    let client = reqwest::Client::new();
-
     let (quote, overview, time_series, sp500_series, news) = tokio::join!(
-        fetch_quote(&client, ticker, api_key),
-        fetch_overview(&client, ticker, api_key),
-        fetch_time_series(&client, ticker, api_key),
-        fetch_time_series(&client, SP500_TICKER, api_key),
-        fetch_news(&client, ticker, api_key),
+        fetch_quote(client.clone(), ticker, api_key),
+        fetch_overview(client.clone(), ticker, api_key),
+        fetch_time_series(client.clone(), ticker, api_key),
+        fetch_time_series(client.clone(), SP500_TICKER, api_key),
+        fetch_news(client, ticker, api_key),
     );
 
     let quote = quote?;
@@ -108,7 +109,7 @@ pub async fn fetch_market_data(
 }
 
 async fn fetch_quote(
-    client: &reqwest::Client,
+    client: Arc<ClientWithMiddleware>,
     ticker: &str,
     api_key: &str,
 ) -> Result<GlobalQuote, Box<dyn std::error::Error + Send + Sync>> {
@@ -122,7 +123,7 @@ async fn fetch_quote(
 }
 
 async fn fetch_overview(
-    client: &reqwest::Client,
+    client: Arc<ClientWithMiddleware>,
     ticker: &str,
     api_key: &str,
 ) -> Result<OverviewResponse, Box<dyn std::error::Error + Send + Sync>> {
@@ -136,7 +137,7 @@ async fn fetch_overview(
 }
 
 async fn fetch_time_series(
-    client: &reqwest::Client,
+    client: Arc<ClientWithMiddleware>,
     ticker: &str,
     api_key: &str,
 ) -> Result<TimeSeriesResponse, Box<dyn std::error::Error + Send + Sync>> {
@@ -150,7 +151,7 @@ async fn fetch_time_series(
 }
 
 async fn fetch_news(
-    client: &reqwest::Client,
+    client: Arc<ClientWithMiddleware>,
     ticker: &str,
     api_key: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {

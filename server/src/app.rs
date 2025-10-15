@@ -2,10 +2,13 @@ use std::fmt::Debug;
 use std::str::FromStr;
 use std::sync::Arc;
 use claude_client::claude::ClaudeClient;
+use reqwest::Client;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 
 #[derive(Clone)]
 pub struct TakehomeApp {
     // todo: make this Arc if it ever gets too big
+    pub http_client: Arc<ClientWithMiddleware>,
     pub config: AppConfig,
     pub claude: Arc<ClaudeClient>,
 }
@@ -13,6 +16,7 @@ pub struct TakehomeApp {
 impl TakehomeApp {
     pub fn new(config: AppConfig, claude: ClaudeClient) -> Self {
         Self {
+            http_client: Arc::new(ClientBuilder::new(Client::new()).build()),
             config,
             claude: Arc::new(claude),
         }

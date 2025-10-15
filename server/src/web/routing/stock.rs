@@ -20,6 +20,7 @@ pub async fn stock_analysis_handler(
     ValidJson(payload): ValidJson<StockInquiryRequest>
 ) -> ApiResponse<StockAnalysis> {
     let market_data_result = fetch_market_data(
+        app.http_client,
         &payload.ticker,
         app.config.alpha_vantage_api_key.as_str()
     ).await;
